@@ -4,3 +4,10 @@
 *.ptx
 *.cubin
 *.fatbin
+
+# 输出文件
+outputs/*
+# 预训练模型
+*.bin
+# 数据相关
+processed_data/*
