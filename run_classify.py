@@ -444,9 +444,8 @@ def main(params=[]):
 
 if __name__ == "__main__":
     # main中的参数指定是训练还是预测，默认（不指定）是训练, param=[训练，测试，推理]
-    # main([False, False, predict])
-
-
+    main()
+    
     # 直接调用模型进行批量推理
-    file_path = "processed_data/THUCNews/test.json"
-    get_detail_output_info(file_path)
+    # file_path = "processed_data/THUCNews/test.json"
+    # get_detail_output_info(file_path)

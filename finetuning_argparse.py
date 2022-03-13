@@ -2,30 +2,39 @@ import argparse
 
 def get_argparse():
      parser = argparse.ArgumentParser()
+
      # Required parameters
      task_name = "classify"
      pretrained = "pretrained_model/chinese_rbt3_pytorch/"
      saved = "outputs/sim_output/bert/checkpoint-3376"
-
-     parser.add_argument("--task_name", default=task_name, type=str,
-                         help="The name of the task to train selected in the list: ")
+     parser.add_argument("--task_name", default=task_name, type=str, choices=["classify", "sim"]
+                         help="任务类型, classify: 单条文本分类, sim: 两条文本相似度 ")
      parser.add_argument("--data_dir", default="processed_data/THUCNews", type=str,
-                         help="The input data dir. Should contain the training files for the CoNLL-2003 NER task.", )
+                         help="训练测试验证数据集所在目录", )
      parser.add_argument("--model_type", default="bert", type=str,
-                         help="Model type selected in the list: ")
+                         help="模型类型当前仅可选bert")
      parser.add_argument("--model_name_or_path", default=pretrained, type=str,
-                         help="Path to pre-trained model or shortcut name selected in the list: " )
+                         help="预训练模型所在目录" )
      parser.add_argument("--output_dir", default=f"outputs/THUCNews", type=str, 
-                         help="The output directory where the model predictions and checkpoints will be written.", )
-     parser.add_argument("--data_type", default="train", type=str, choices=["train", "test", "dev", "test_pulic"],
-                         help="The output directory where the model predictions and checkpoints will be written.", )
+                         help="输出目录(保存预测结果和模型)", )
+     # parser.add_argument("--data_type", default="train", type=str, choices=["train", "test", "dev", "test_pulic"],
+     #                     help="数据类型(用于指定处理训练/测试/验证数据)", )
      parser.add_argument("--train_file_name", default="train.json", type=str,
-                         help="The output directory where the model predictions and checkpoints will be written.", )
+                         help="训练集文件名称", )
      parser.add_argument("--dev_file_name", default="dev.json", type=str,
-                         help="The output directory where the model predictions and checkpoints will be written.", )
+                         help="验证集文件名称", )
      parser.add_argument("--test_file_name", default="test.json", type=str,
-                         help="The output directory where the model predictions and checkpoints will be written.", )
-
+                         help="测试集文件名称", )
+     parser.add_argument("--train_max_seq_length", default=512, type=int,
+                         help= "训练集最大长度")
+     parser.add_argument("--eval_max_seq_length", default=512, type=int,
+                         help="验证数据最大长度", )
+     parser.add_argument("--do_train", default=True, type=bool,
+                         help="是否训练")
+     parser.add_argument("--do_predict", default=False, type=bool,
+                         help="是否要推理")
+     parser.add_argument("--do_test", default=False, type=bool,
+                         help="是否要测试")
 
      # Other parameters
      parser.add_argument('--loss_type', default='ce', type=str,
@@ -36,20 +45,6 @@ def get_argparse():
                          help="Pretrained tokenizer name or path if not the same as model_name", )
      parser.add_argument("--cache_dir", default="", type=str,
                          help="Where do you want to store the pre-trained models downloaded from s3", )
-     parser.add_argument("--train_max_seq_length", default=512, type=int,
-                         help="The maximum total input sequence length after tokenization. Sequences longer "
-                              "than this will be truncated, sequences shorter will be padded.", )
-     parser.add_argument("--eval_max_seq_length", default=512, type=int,
-                         help="The maximum total input sequence length after tokenization. Sequences longer "
-                              "than this will be truncated, sequences shorter will be padded.", )
-     parser.add_argument("--do_train", default=True, type=bool,
-                         help="Whether to run training.")
-     parser.add_argument("--do_eval", default=False, type=bool,
-                         help="Whether to run eval on the dev set.")
-     parser.add_argument("--do_predict", default=False, type=bool,
-                         help="Whether to run predictions on the test set.")
-     parser.add_argument("--do_test", default=False, type=bool,
-                         help="Whether to run test on the test set.")
      parser.add_argument("--evaluate_during_training", action="store_true",
                          help="Whether to run evaluation during training at each logging step.", )
      parser.add_argument("--do_lower_case", default=True, type=bool,
@@ -61,7 +56,6 @@ def get_argparse():
                          help="Epsilon for adversarial.")
      parser.add_argument('--adv_name', default='word_embeddings', type=str,
                          help="name for adversarial layer.")
-
      parser.add_argument("--per_gpu_train_batch_size", default=8, type=int,
                          help="Batch size per GPU/CPU for training.")
      parser.add_argument("--per_gpu_eval_batch_size", default=8, type=int,
@@ -80,7 +74,6 @@ def get_argparse():
                          help="Total number of training epochs to perform.")
      parser.add_argument("--max_steps", default=-1, type=int,
                          help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
-
      parser.add_argument("--warmup_proportion", default=0.1, type=float,
                          help="Proportion of training to perform linear learning rate warmup for,E.g., 0.1 = 10% of training.")
      parser.add_argument("--logging_steps", type=int, default=-1,
