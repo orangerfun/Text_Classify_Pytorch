@@ -50,4 +50,9 @@ python run_classify.py
 
 模型方面尝试了`rbt3`和`roberta_wwm_ext`
 
-todo: 上链接<模型和数据还未上传至百度云，下次更新>
+模型及数据集下载链接：https://pan.baidu.com/s/1bnk-2oVqCdH1eAjTdqky2A 
+提取码：ifrm
+
+**效果**
+使用rbt3模型：两个文本匹配任务 accuracy: 0.778
+             新闻文本（单条文本）分类任务: accuracy: 0.92+
