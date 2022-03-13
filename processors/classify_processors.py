@@ -338,7 +338,7 @@ class SimProcessor(DataProcessor):
     
     def _read_json(self, input_file):
         lines = []
-        with open(input_file,'r') as f:
+        with open(input_file,'r', encoding="utf-8") as f:
             for indexx,line in enumerate(f):
                 line = json.loads(line.strip())
                 lines.append(line)
