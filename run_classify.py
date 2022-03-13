@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "4,6,7"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "4,6,7"
 
 import time
 import json
@@ -39,7 +39,10 @@ def get_detail_output_info(file_path, save_path=None):
     lines = fp.readlines()
     result = {"all_text_a":[], "all_text_b":[], "all_label":[], "all_pred":[], "is_same":[]}
     all_label_ids, all_pred_ids = [], []
-    for l in tqdm(lines, desc="predict"):
+    for idx, l in enumerate(tqdm(lines, desc="predict")):
+        if idx > 10000:
+            logger.warning("选择前10000条测试程序, 若非测试程序请注释该判断语句！！")
+            break
         l  = json.loads(l)
         text_a, text_b, label = l["question"], l.get("relationship", ""), l["label"]
         pred = predict(args, model, tokenizer, text_a, text_b)
@@ -62,8 +65,12 @@ def get_detail_output_info(file_path, save_path=None):
     df.to_excel(save_path, index=False)
 
     accuracy = accuracy_score(all_label_ids, all_pred_ids)
-    precision = precision_score(all_label_ids, all_pred_ids)
-    recall = recall_score(all_label_ids, all_pred_ids)
+    if len(set(all_label_ids)) == 2:
+        precision = precision_score(all_label_ids, all_pred_ids)
+        recall = recall_score(all_label_ids, all_pred_ids)
+    else:
+        precision = precision_score(all_label_ids, all_pred_ids, average="macro")
+        recall = recall_score(all_label_ids, all_pred_ids, average="macro")
     logger.info(f"accuracy:{accuracy}, precision:{precision}, recall:{recall}")
     logger.info("predict finished...")
 
@@ -161,8 +168,14 @@ def evaluate(args, model, tokenizer, prefix="dev"):
 
     eval_loss = eval_loss / nb_eval_steps
     accuracy = accuracy_score(all_labels, all_preds)
-    precision = precision_score(all_labels, all_preds)
-    recall = recall_score(all_labels, all_preds)
+    # 二分类情况
+    if len(set(all_labels))==2:
+        precision = precision_score(all_labels, all_preds)
+        recall = recall_score(all_labels, all_preds)
+    # 多分类情况
+    else:
+        precision = precision_score(all_labels, all_preds, average="macro")
+        recall = recall_score(all_labels, all_preds, average="macro")
 
     results['loss'] = [eval_loss]
     results["accuracy"] = [accuracy]
@@ -186,6 +199,7 @@ def train(args, train_dataset, model, tokenizer):
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+    # max_steps表示最大pao多少个step,若不指定直接根据数据集的数量计算得出
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
@@ -215,10 +229,10 @@ def train(args, train_dataset, model, tokenizer):
         except ImportError:
             raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-    # multi-gpu training (should be after apex fp16 initialization)
+    # 多卡训练
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
-    # Distributed training (should be after apex fp16 initialization)
+    # 分布式训练
     if args.local_rank != -1:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
@@ -239,9 +253,11 @@ def train(args, train_dataset, model, tokenizer):
     steps_trained_in_current_epoch = 0
     # TODO: Check if continuing training from a checkpoint
     if os.path.exists(args.model_name_or_path) and "checkpoint" in args.model_name_or_path:
-        # set global_step to gobal_step of last saved checkpoint from model path
+        # 从保存的checkpoint名字中读取总共跑的steps
         global_step = int(args.model_name_or_path.split("-")[-1].split("/")[0])
+        # 计算执行了几个循环（epochs）
         epochs_trained = global_step // (len(train_dataloader) // args.gradient_accumulation_steps)
+        # 计算最后一个循环中跑了几个step
         steps_trained_in_current_epoch = global_step % (len(train_dataloader) // args.gradient_accumulation_steps)
         logger.info("  Continuing training from checkpoint, will skip to saved global_step")
         logger.info("  Continuing training from epoch %d", epochs_trained)
@@ -255,6 +271,7 @@ def train(args, train_dataset, model, tokenizer):
     model.zero_grad()
     seed_everything(args.seed)  # Added here for reproductibility (even between python 2 and 3)
     pbar = ProgressBar(n_total=len(train_dataloader), desc='Training', num_epochs=int(args.num_train_epochs))
+    # save_step=-1:跑完一个epoch保存一次模型， logging_steps=1: 跑完一个epoch进行验证一次打印结果
     if args.save_steps==-1 and args.logging_steps==-1:
         args.logging_steps=len(train_dataloader)
         args.save_steps = len(train_dataloader)
@@ -426,7 +443,10 @@ def main(params=[]):
 
 
 if __name__ == "__main__":
-    # main([False, True, False])
+    # main中的参数指定是训练还是预测，默认（不指定）是训练, param=[训练，测试，推理]
+    # main([False, False, predict])
 
-    file_path = "processed_data/test.json"
+
+    # 直接调用模型进行批量推理
+    file_path = "processed_data/THUCNews/test.json"
     get_detail_output_info(file_path)

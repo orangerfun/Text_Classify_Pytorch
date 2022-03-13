@@ -367,7 +367,7 @@ class ClassifyProcessor(DataProcessor):
     
     def get_labels(self):
         """See base class."""
-        return ["0", "1"]
+        return ["星座", "体育", "游戏", "家居", "财经", "时尚", "娱乐", "教育", "房产", "科技", "社会", "股票", "时政", "彩票"]
 
     def _create_examples(self, lines, set_type):
         """
@@ -387,7 +387,7 @@ class ClassifyProcessor(DataProcessor):
         TODO: 将_read_json函数放到父类 DataProcessor 中 
         '''
         lines = []
-        with open(input_file,'r') as f:
+        with open(input_file,'r', encoding="utf8") as f:
             for indexx,line in enumerate(f):
                 line = json.loads(line.strip())
                 lines.append(line)

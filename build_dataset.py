@@ -12,11 +12,15 @@ def convert_examples_to_features(examples, tokenizer, label_list, max_seq_length
     将example中的str转换成id, 构建input_id, attention_mask_id etc
     主要进行 token2id, add sepecial token, padding, truncating等操作
     '''
-    special_tokens_count = 3
+    
     features = []
     # label 2 id
     label_map = {l:idx for idx,l in enumerate(label_list)}
     for exp_idx, example in enumerate(tqdm(examples, desc="convert_features")):
+        # 选取前20000条数据用于跑通程序，后续使用请注释掉
+        if exp_idx > 20000:
+            logger.warning("正在使用程序测试样例共2万条!!! 若非测试程序请注释该判断语句重跑代码")
+            break
         query, text_b, task_type = example.text_a, example.text_b, example.task_type
         if query == "":            
             logger.info("text_a is none or empty string, this example pair will be skipped!")
@@ -24,6 +28,7 @@ def convert_examples_to_features(examples, tokenizer, label_list, max_seq_length
         query_tokens = tokenizer.tokenize(query)
 
         if task_type == "sim":
+            special_tokens_count = 3
             if text_b == "":
                 logger.info("text_b is none or empty string, this example pair will be skipped!")
                 continue
@@ -34,10 +39,12 @@ def convert_examples_to_features(examples, tokenizer, label_list, max_seq_length
                 query_tokens = query_tokens[: (max_seq_length - special_tokens_count-len(textb_tokens))]
             input_tokens = ["CLS"]+query_tokens+["SEP"]+textb_tokens+["SEP"]
         elif task_type == "classify":
-            input_tokens = ["CLS"]+query+["SEP"]
+            special_tokens_count = 2
+            if len(query_tokens) > max_seq_length-special_tokens_count:
+                query_tokens = query_tokens[:max_seq_length-special_tokens_count]
+            input_tokens = ["CLS"]+query_tokens+["SEP"]
         else:
-            logger.error("UNKONW TASK TYPE!!!")
-            continue
+            raise ValueError("UNKONW TASK TYPE!!!")
         input_ids = tokenizer.convert_tokens_to_ids(input_tokens)
         segment_ids = [0]*(len(query_tokens)+2)+[1]*(len(input_ids)-len(query_tokens)-2)
         input_mask = [1]*len(input_tokens)
@@ -68,6 +75,14 @@ def convert_examples_to_features(examples, tokenizer, label_list, max_seq_length
 
 
 def load_and_cache_examples(args, task, tokenizer, data_type):
+    '''
+    根据json文件构建数据集
+    args: 参数实例
+    task: 任务类型，classify:单条文本分类，sim:两条文本的相似度
+    tokenizer: 分词器实例
+    data_type: 数据类型，train:训练集， test:测试集，dev: 验证集，test_public: 其他测试集[后面会弃用] 
+    return: tensordataset实例
+    '''
     processor = processors[task]()
     # 处理好的数据保存路径, 命名方式:cached.{data_type}.{model_name}.{max_seq_len}.{task}
     cached_features_file = os.path.join(args.data_dir, 'cached.{}.{}.{}.{}'.format(

@@ -11,3 +11,5 @@ outputs/*
 *.bin
 # 数据相关
 processed_data/*
+# 缓存跑_pycache
+*.pyc
